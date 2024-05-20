@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Input Fields</title>
+    <style>
+        body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #1f1f20; /* Dark blue background */
+    color: #ffffff; /* White text */
+    padding: 20px;
+    max-width: 300px;
+    margin: 0 auto;
+    padding-top: 50px;
+}
+
+.input-container {
+    margin-bottom: 10px;
+}
+
+.number-input {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: 2px solid #ffffff; /* White border */
+    border-radius: 5px;
+    background-color: transparent;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.number-input::placeholder {
+    color: #cccccc; /* Light gray placeholder */
+}
+
+#showBtn{
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 2px;
+    margin-top: 10px;
+}
+
+#ControlsButtons{
+    margin-top: 20px;
+    display: none;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 3px;
+    background-color: #4a90e2; /* Blue button background */
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #357bd8; /* Darker blue on hover */
+}
+
+#totalFullArea{
+    color: #ffffff;
+    margin-top: 20px;
+    display: block;
+}
+
+#total {
+    font-weight: bold;
+    font-size: 20px;
+}
+
+    </style>
+</head>
+<body>
+    <div id="input-wrapper"></div>
+    <button id="showBtn">Show</button>
+    <div id="ControlsButtons">
+        <button style="background: rgb(1, 97, 14);" id="backupBtn">Backup</button>
+        <button id="restoreBtn">Restore</button>
+        <button style="background: rgb(97, 4, 4);" id="clearBtn">Clear</button>
+    </div>
+    <div id="totalFullArea">
+        <strong>Total:</strong> <span id="total">0</span>
+    </div>
+
+    <script>
+        
+        let total = 0;
+
+function addInputField(value) {
+    const inputWrapper = document.getElementById('input-wrapper');
+    const newInputContainer = document.createElement('div');
+    newInputContainer.className = 'input-container';
+
+    const newInput = document.createElement('input');
+    newInput.type = 'text';
+    newInput.className = 'number-input';
+    newInput.value = value || ''; // Set value if provided
+    newInput.oninput = handleInput;
+    newInput.onkeydown = handleEnterPress;
+
+    newInputContainer.appendChild(newInput);
+    inputWrapper.appendChild(newInputContainer);
+
+    // Focus on the new input field
+    newInput.focus();
+
+    // Backup the input values to local storage after adding the new input field
+    backupToLocalStorage();
+}
+
+function handleInput(event) {
+    let input = event.target.value.replace(/[^0-9.]/g, ''); // Remove any non-numeric character except for the point
+    input = input.replace(/(\..*)\./g, '$1'); // Prevent more than one point
+
+    // Automatically add a point after 2 digits if there isn't one already
+    if (input.length > 2 && !input.includes('.')) {
+        input = input.slice(0, 2) + '.' + input.slice(2);
+    }
+
+    // Limit to 4 characters
+    if (input.length > 4) {
+        input = input.slice(0, 4);
+    }
+
+    event.target.value = input;
+    updateTotal();
+
+    // Check if input length is 4 and create the next input field
+    if (input.length === 4) {
+        addInputField();
+    }
+}
+
+function backupToLocalStorage() {
+    const inputs = document.querySelectorAll('.number-input');
+    const values = Array.from(inputs).map(input => input.value);
+    localStorage.setItem('inputValues', JSON.stringify(values));
+}
+
+function restoreFromLocalStorage() {
+    const savedValues = localStorage.getItem('inputValues');
+    if (savedValues) {
+        const values = JSON.parse(savedValues);
+        values.forEach(value => addInputField(value));
+    } else {
+        // If no saved values, add one input field by default
+        addInputField();
+    }
+}
+
+function updateTotal() {
+    const inputs = document.querySelectorAll('.number-input');
+    total = 0;
+
+    inputs.forEach(input => {
+        const value = parseFloat(input.value);
+        if (!isNaN(value)) {
+            total += value;
+        }
+    });
+
+    document.getElementById('total').textContent = total;
+}
+
+function handleEnterPress(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const inputs = document.querySelectorAll('.number-input');
+        const currentIndex = Array.from(inputs).indexOf(event.target);
+
+        if (currentIndex === inputs.length - 1) {
+            // If the current input is the last one, add a new input and focus on it
+            addInputField();
+        } else {
+            // If it's not the last input, move focus to the next input
+            inputs[currentIndex + 1].focus();
+        }
+    }
+}
+
+
+// Initialize the input fields on page load
+document.addEventListener('DOMContentLoaded', () => {
+    restoreFromLocalStorage();
+    updateTotal();
+});
+
+
+// Add event listeners for backup, restore, and clear buttons
+document.getElementById('backupBtn').addEventListener('click', backupToJSON);
+document.getElementById('restoreBtn').addEventListener('click', restoreFromJSON);
+document.getElementById('clearBtn').addEventListener('click', clearAllData);
+
+// Other existing code remains the same
+
+
+
+function backupToJSON() {
+    const inputs = document.querySelectorAll('.number-input');
+    const values = Array.from(inputs).map(input => input.value);
+    const jsonData = { inputs: values };
+
+    // Convert JSON data to a string
+    const jsonString = JSON.stringify(jsonData, null, 2);
+
+    // Create a Blob object with the JSON data
+    const blob = new Blob([jsonString], { type: 'application/json' });
+
+    // Create a temporary anchor element
+    const anchor = document.createElement('a');
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = 'input_data.json';
+
+    // Trigger a click event on the anchor to download the JSON file
+    anchor.click();
+}
+
+function restoreFromJSON() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.click();
+
+    input.onchange = function(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            const jsonData = JSON.parse(event.target.result);
+            const values = jsonData.inputs || [];
+
+            // Clear existing input fields
+            document.getElementById('input-wrapper').innerHTML = '';
+
+            // Restore input fields with values from JSON
+            values.forEach(value => addInputField(value));
+
+            // Update total after restoring
+            updateTotal();
+        };
+
+        reader.readAsText(file);
+    };
+}
+
+
+
+function clearAllData() {
+    // Clear input fields except the first one
+    const inputWrapper = document.getElementById('input-wrapper');
+    const inputContainers = inputWrapper.querySelectorAll('.input-container');
+    for (let i = 1; i < inputContainers.length; i++) {
+        inputContainers[i].remove();
+    }
+
+    // Clear input values and update total
+    const firstInput = inputWrapper.querySelector('.number-input');
+    if (firstInput) {
+        firstInput.value = '';
+    }
+    total = 0;
+    document.getElementById('total').textContent = total;
+
+    // Clear data from local storage
+    localStorage.removeItem('inputValues');
+}
+
+
+
+document.getElementById('showBtn').addEventListener('click', showBtn);
+
+function showBtn() {
+document.getElementById('ControlsButtons').style.display = 'block'
+this.style.display = 'none';
+    
+}
+
+    </script>
+</body>
+</html>
