@@ -97,7 +97,7 @@ function addInputField(value) {
     newInputContainer.className = 'input-container';
 
     const newInput = document.createElement('input');
-    newInput.type = 'text';
+    newInput.type = 'number';
     newInput.className = 'number-input';
     newInput.value = value || ''; // Set value if provided
     newInput.oninput = handleInput;
